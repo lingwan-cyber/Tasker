@@ -153,8 +153,7 @@ fun CommandExecutionScreen(
             result = res
             isRunning = false
             if (res.exitCode == 0) {
-                // Run succeeded without runtime error: automatically exit without needing to tap Close
-                kotlinx.coroutines.delay(400)
+                // Succeeded with no runtime error: exit immediately without delay
                 onClose()
             }
         }
