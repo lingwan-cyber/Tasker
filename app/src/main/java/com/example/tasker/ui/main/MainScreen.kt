@@ -12,6 +12,7 @@ import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -22,6 +23,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
@@ -384,7 +386,7 @@ fun CommandEditDialog(
     var commandText by remember { mutableStateOf(initial?.command ?: "") }
     var runAsRoot by remember { mutableStateOf(initial?.runAsRoot ?: false) }
     var showOutput by remember { mutableStateOf(initial?.showOutput ?: true) }
-    var autoCloseDelayMs by remember { mutableStateOf(initial?.autoCloseDelayMs ?: 0) }
+    var delayText by remember { mutableStateOf((initial?.autoCloseDelayMs ?: 0).toString()) }
 
     val presets = listOf(
         "510 dp" to "wm density $(( $(wm size | grep -o '[0-9]*x[0-9]*' | tail -1 | cut -dx -f1) * 160 / 510 ))",
@@ -473,35 +475,39 @@ fun CommandEditDialog(
                 }
 
                 if (showOutput) {
-                    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                        Text(
-                            "Auto-Close Delay (on success)",
-                            fontWeight = FontWeight.Medium,
-                            fontSize = 14.sp
-                        )
-                        Text(
-                            if (autoCloseDelayMs == 0) "Closes instantly once command succeeds" else "Waits ${autoCloseDelayMs}ms before closing on success",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.outline
-                        )
-                        val delayOptions = listOf(
-                            0 to "0 ms (Instant)",
-                            300 to "300 ms",
-                            500 to "500 ms",
-                            1000 to "1 s",
-                            2000 to "2 s"
-                        )
-                        LazyRow(
-                            horizontalArrangement = Arrangement.spacedBy(6.dp),
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            items(delayOptions) { (ms, label) ->
-                                FilterChip(
-                                    selected = autoCloseDelayMs == ms,
-                                    onClick = { autoCloseDelayMs = ms },
-                                    label = { Text(label, fontSize = 12.sp) }
-                                )
+                    OutlinedTextField(
+                        value = delayText,
+                        onValueChange = { input ->
+                            if (input.all { it.isDigit() } && input.length <= 6) {
+                                delayText = input
                             }
+                        },
+                        label = { Text("Auto-Close Delay (ms)") },
+                        placeholder = { Text("0") },
+                        supportingText = {
+                            val parsedDelay = delayText.toIntOrNull() ?: 0
+                            Text(
+                                if (parsedDelay == 0) "0 ms = Closes instantly once command succeeds"
+                                else "Waits ${parsedDelay} ms before closing on success"
+                            )
+                        },
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+
+                    val quickDelays = listOf(0, 300, 500, 1000, 2000)
+                    LazyRow(
+                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        items(quickDelays) { ms ->
+                            val isSelected = (delayText.toIntOrNull() ?: 0) == ms
+                            FilterChip(
+                                selected = isSelected,
+                                onClick = { delayText = ms.toString() },
+                                label = { Text(if (ms == 0) "0 ms (Instant)" else "${ms} ms", fontSize = 12.sp) }
+                            )
                         }
                     }
                 }
@@ -530,12 +536,13 @@ fun CommandEditDialog(
         confirmButton = {
             Button(
                 onClick = {
+                    val parsedDelay = delayText.toIntOrNull() ?: 0
                     val finalItem = (initial ?: CommandItem(name = "", command = "")).copy(
                         name = name.trim().ifBlank { "Shell Command" },
                         command = commandText.trim(),
                         runAsRoot = runAsRoot,
                         showOutput = showOutput,
-                        autoCloseDelayMs = autoCloseDelayMs
+                        autoCloseDelayMs = parsedDelay
                     )
                     onSave(finalItem)
                 },
