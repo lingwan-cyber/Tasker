@@ -98,63 +98,89 @@ object ShellExecutor {
 
     private fun handleSystemCommand(command: String, context: Context, startTime: Long): ExecutionResult? {
         try {
-            // Case A: wm density reset
-            if (command.equals("wm density reset", ignoreCase = true)) {
+            var appliedDensityMsg: String? = null
+            var appliedFontScaleMsg: String? = null
+            var appliedSecureMsg: String? = null
+            var handledAny = false
+
+            // 1. Check for font_scale commands:
+            val fontScalePutRegex = Regex("""settings\s+put\s+system\s+font_scale\s+([0-9.]+)""", RegexOption.IGNORE_CASE)
+            val fontScaleMatch = fontScalePutRegex.find(command)
+            if (fontScaleMatch != null) {
+                val scale = fontScaleMatch.groupValues[1].toFloatOrNull()
+                if (scale != null) {
+                    applyFontScale(context, scale)
+                    val label = when (scale) {
+                        0.85f -> "Small (0.85)"
+                        1.0f -> "Default (1.0)"
+                        1.15f -> "Large (1.15)"
+                        1.30f -> "Largest (1.30)"
+                        else -> "$scale"
+                    }
+                    appliedFontScaleMsg = "Font size set to $label."
+                    handledAny = true
+                }
+            } else if (command.trim().equals("settings get system font_scale", ignoreCase = true)) {
+                val currentScale = try {
+                    Settings.System.getFloat(context.contentResolver, Settings.System.FONT_SCALE, 1.0f)
+                } catch (e: Exception) {
+                    1.0f
+                }
+                return ExecutionResult(
+                    exitCode = 0,
+                    stdout = currentScale.toString(),
+                    stderr = "",
+                    durationMs = System.currentTimeMillis() - startTime
+                )
+            }
+
+            // 2. Check for wm density commands:
+            if (command.contains("wm density reset", ignoreCase = true)) {
                 applyDensity(context, null)
-                return ExecutionResult(
-                    exitCode = 0,
-                    stdout = "Display density reset to default successfully.",
-                    stderr = "",
-                    durationMs = System.currentTimeMillis() - startTime
-                )
-            }
+                appliedDensityMsg = "Display density reset to default successfully."
+                handledAny = true
+            } else if (command.contains("wm density", ignoreCase = true)) {
+                val fixedDensityRegex = Regex("""wm\s+density\s+(\d+)""", RegexOption.IGNORE_CASE)
+                val fixedMatch = fixedDensityRegex.find(command)
+                if (fixedMatch != null && !command.contains("grep") && !command.contains("$")) {
+                    val dpi = fixedMatch.groupValues[1].toInt()
+                    applyDensity(context, dpi)
+                    appliedDensityMsg = "Display density set to $dpi DPI."
+                    handledAny = true
+                } else {
+                    val targetDp = when {
+                        command.contains("550") -> 550
+                        command.contains("510") -> 510
+                        else -> Regex("""(?:/\s*|dp\s*|\bsw\b\s*)(\d{3,4})""", RegexOption.IGNORE_CASE)
+                            .find(command)?.groupValues?.get(1)?.toIntOrNull()
+                    }
 
-            // Case B: wm density <number>
-            val fixedDensityRegex = Regex("""wm\s+density\s+(\d+)""", RegexOption.IGNORE_CASE)
-            val fixedMatch = fixedDensityRegex.matchEntire(command)
-            if (fixedMatch != null) {
-                val dpi = fixedMatch.groupValues[1].toInt()
-                applyDensity(context, dpi)
-                return ExecutionResult(
-                    exitCode = 0,
-                    stdout = "Display density set to $dpi DPI.",
-                    stderr = "",
-                    durationMs = System.currentTimeMillis() - startTime
-                )
-            }
-
-            // Case C: wm density calculation or target dp command (e.g. 510 dp, 550 dp)
-            if (command.contains("wm density", ignoreCase = true)) {
-                val targetDp = when {
-                    command.contains("550") -> 550
-                    command.contains("510") -> 510
-                    else -> Regex("""(?:/\s*|dp\s*|\bsw\b\s*)(\d{3,4})""", RegexOption.IGNORE_CASE)
-                        .find(command)?.groupValues?.get(1)?.toIntOrNull()
-                }
-
-                if (targetDp != null) {
-                    val screenWidth = getPhysicalScreenWidth(context)
-                    val targetDpi = (screenWidth * 160) / targetDp
-                    applyDensity(context, targetDpi)
-                    return ExecutionResult(
-                        exitCode = 0,
-                        stdout = "Detected screen width: ${screenWidth}px\nSmallest width set to ${targetDp} dp ($targetDpi DPI).",
-                        stderr = "",
-                        durationMs = System.currentTimeMillis() - startTime
-                    )
+                    if (targetDp != null) {
+                        val screenWidth = getPhysicalScreenWidth(context)
+                        val targetDpi = (screenWidth * 160) / targetDp
+                        applyDensity(context, targetDpi)
+                        appliedDensityMsg = "Detected screen width: ${screenWidth}px\nSmallest width set to ${targetDp} dp ($targetDpi DPI)."
+                        handledAny = true
+                    }
                 }
             }
 
-            // Case D: settings put secure <key> <val>
+            // 3. Check for settings put secure <key> <val>
             val settingsPutRegex = Regex("""settings\s+put\s+secure\s+([a-zA-Z0-9_]+)\s+(.*)""", RegexOption.IGNORE_CASE)
             val settingsMatch = settingsPutRegex.matchEntire(command)
             if (settingsMatch != null) {
                 val key = settingsMatch.groupValues[1]
                 val value = settingsMatch.groupValues[2].trim('\'', '"', ' ')
                 Settings.Secure.putString(context.contentResolver, key, value)
+                appliedSecureMsg = "Updated Secure Setting: $key = $value"
+                handledAny = true
+            }
+
+            if (handledAny) {
+                val messages = listOfNotNull(appliedDensityMsg, appliedFontScaleMsg, appliedSecureMsg)
                 return ExecutionResult(
                     exitCode = 0,
-                    stdout = "Updated Secure Setting: $key = $value",
+                    stdout = messages.joinToString("\n"),
                     stderr = "",
                     durationMs = System.currentTimeMillis() - startTime
                 )
@@ -170,6 +196,51 @@ object ShellExecutor {
             // Let fallback handle or report error
         }
         return null
+    }
+
+    private fun applyFontScale(context: Context, scale: Float) {
+        // 1. Update Settings.System
+        try {
+            Settings.System.putFloat(context.contentResolver, Settings.System.FONT_SCALE, scale)
+            android.util.Log.i("TaskerExec", "Set Settings.System.FONT_SCALE to $scale")
+        } catch (e: Exception) {
+            android.util.Log.w("TaskerExec", "Failed to update Settings.System.FONT_SCALE directly", e)
+        }
+
+        // 2. Invoke ActivityTaskManager via reflection to apply configuration immediately
+        try {
+            val atmClass = Class.forName("android.app.ActivityTaskManager")
+            val getServiceMethod = atmClass.getMethod("getService")
+            val atm = getServiceMethod.invoke(null)
+            if (atm != null) {
+                val getConfigurationMethod = atm.javaClass.getMethod("getConfiguration")
+                val config = getConfigurationMethod.invoke(atm) as? android.content.res.Configuration
+                if (config != null) {
+                    config.fontScale = scale
+                    val updateConfigMethod = atm.javaClass.getMethod("updatePersistentConfiguration", android.content.res.Configuration::class.java)
+                    updateConfigMethod.invoke(atm, config)
+                    android.util.Log.i("TaskerExec", "Updated persistent configuration with fontScale=$scale via ActivityTaskManager")
+                }
+            }
+        } catch (e: Exception) {
+            try {
+                val amClass = Class.forName("android.app.ActivityManagerNative")
+                val getDefaultMethod = amClass.getMethod("getDefault")
+                val am = getDefaultMethod.invoke(null)
+                if (am != null) {
+                    val getConfigurationMethod = am.javaClass.getMethod("getConfiguration")
+                    val config = getConfigurationMethod.invoke(am) as? android.content.res.Configuration
+                    if (config != null) {
+                        config.fontScale = scale
+                        val updateConfigMethod = am.javaClass.getMethod("updatePersistentConfiguration", android.content.res.Configuration::class.java)
+                        updateConfigMethod.invoke(am, config)
+                        android.util.Log.i("TaskerExec", "Updated persistent configuration with fontScale=$scale via ActivityManager")
+                    }
+                }
+            } catch (e2: Exception) {
+                android.util.Log.w("TaskerExec", "ActivityManager configuration reflection failed", e2)
+            }
+        }
     }
 
     private fun getPhysicalScreenWidth(context: Context): Int {

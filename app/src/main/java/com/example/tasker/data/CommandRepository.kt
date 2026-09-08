@@ -38,11 +38,17 @@ class CommandRepository(context: Context) {
                     if (item.name.contains("Ping", ignoreCase = true) || item.name.contains("Uptime", ignoreCase = true)) {
                         continue
                     }
-                    // Update names to concise "510 dp" and "550 dp"
+                    // Update commands to include font scale settings
                     if (item.name.contains("510")) {
-                        item = item.copy(name = "510 dp")
+                        item = item.copy(
+                            name = "510 dp",
+                            command = "wm density $(( $(wm size | grep -o '[0-9]*x[0-9]*' | tail -1 | cut -dx -f1) * 160 / 510 )) && settings put system font_scale 1.0"
+                        )
                     } else if (item.name.contains("550")) {
-                        item = item.copy(name = "550 dp")
+                        item = item.copy(
+                            name = "550 dp",
+                            command = "wm density $(( $(wm size | grep -o '[0-9]*x[0-9]*' | tail -1 | cut -dx -f1) * 160 / 550 )) && settings put system font_scale 0.85"
+                        )
                     }
                     list.add(item)
                 }
@@ -53,7 +59,7 @@ class CommandRepository(context: Context) {
                     val insertPos = if (list.isNotEmpty()) 1 else 0
                     list.add(insertPos, CommandItem(
                         name = "550 dp",
-                        command = "wm density $(( $(wm size | grep -o '[0-9]*x[0-9]*' | tail -1 | cut -dx -f1) * 160 / 550 ))",
+                        command = "wm density $(( $(wm size | grep -o '[0-9]*x[0-9]*' | tail -1 | cut -dx -f1) * 160 / 550 )) && settings put system font_scale 0.85",
                         runAsRoot = false,
                         showOutput = true
                     ))
@@ -64,7 +70,7 @@ class CommandRepository(context: Context) {
                 if (!has510) {
                     list.add(0, CommandItem(
                         name = "510 dp",
-                        command = "wm density $(( $(wm size | grep -o '[0-9]*x[0-9]*' | tail -1 | cut -dx -f1) * 160 / 510 ))",
+                        command = "wm density $(( $(wm size | grep -o '[0-9]*x[0-9]*' | tail -1 | cut -dx -f1) * 160 / 510 )) && settings put system font_scale 1.0",
                         runAsRoot = false,
                         showOutput = true
                     ))
@@ -82,13 +88,13 @@ class CommandRepository(context: Context) {
         return listOf(
             CommandItem(
                 name = "510 dp",
-                command = "wm density $(( $(wm size | grep -o '[0-9]*x[0-9]*' | tail -1 | cut -dx -f1) * 160 / 510 ))",
+                command = "wm density $(( $(wm size | grep -o '[0-9]*x[0-9]*' | tail -1 | cut -dx -f1) * 160 / 510 )) && settings put system font_scale 1.0",
                 runAsRoot = false,
                 showOutput = true
             ),
             CommandItem(
                 name = "550 dp",
-                command = "wm density $(( $(wm size | grep -o '[0-9]*x[0-9]*' | tail -1 | cut -dx -f1) * 160 / 550 ))",
+                command = "wm density $(( $(wm size | grep -o '[0-9]*x[0-9]*' | tail -1 | cut -dx -f1) * 160 / 550 )) && settings put system font_scale 0.85",
                 runAsRoot = false,
                 showOutput = true
             ),
