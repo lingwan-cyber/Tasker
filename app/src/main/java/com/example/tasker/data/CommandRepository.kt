@@ -129,6 +129,22 @@ class CommandRepository(context: Context) {
         _commands.value = updatedList
     }
 
+    fun duplicate(id: String): CommandItem? {
+        val currentList = _commands.value.toMutableList()
+        val index = currentList.indexOfFirst { it.id == id }
+        if (index == -1) return null
+        val original = currentList[index]
+        val duplicated = original.copy(
+            id = java.util.UUID.randomUUID().toString(),
+            name = "${original.name} (Copy)",
+            createdAt = System.currentTimeMillis()
+        )
+        currentList.add(index + 1, duplicated)
+        saveCommandsInternal(currentList)
+        _commands.value = currentList
+        return duplicated
+    }
+
     private fun saveCommandsInternal(items: List<CommandItem>) {
         val array = JSONArray()
         items.forEach { array.put(it.toJson()) }

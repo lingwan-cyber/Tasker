@@ -42,4 +42,26 @@ class CommandItemTest {
         assertTrue(item.showOutput)
         assertEquals(0, item.autoCloseDelayMs)
     }
+
+    @Test
+    fun testDuplicateCommandItem() {
+        val original = CommandItem(
+            id = "orig-123",
+            name = "510 dp",
+            command = "wm density 400",
+            runAsRoot = false,
+            showOutput = true,
+            autoCloseDelayMs = 250
+        )
+        val copy = original.copy(
+            id = "new-456",
+            name = "${original.name} (Copy)"
+        )
+        assertEquals("new-456", copy.id)
+        assertEquals("510 dp (Copy)", copy.name)
+        assertEquals("wm density 400", copy.command)
+        assertEquals(false, copy.runAsRoot)
+        assertEquals(true, copy.showOutput)
+        assertEquals(250, copy.autoCloseDelayMs)
+    }
 }

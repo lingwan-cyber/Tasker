@@ -34,4 +34,8 @@ class MainScreenViewModel(application: Application) : AndroidViewModel(applicati
     fun deleteCommand(id: String) {
         repository.delete(id)
     }
+
+    fun duplicateCommand(id: String): CommandItem? {
+        return repository.duplicate(id)
+    }
 }

@@ -115,6 +115,12 @@ fun MainScreen(
                                     onRun = {
                                         commandToTest = item
                                     },
+                                    onDuplicate = {
+                                        val copy = viewModel.duplicateCommand(item.id)
+                                        if (copy != null) {
+                                            Toast.makeText(context, "Duplicated \"${item.name}\"", Toast.LENGTH_SHORT).show()
+                                        }
+                                    },
                                     onEdit = {
                                         commandToEdit = item
                                     },
@@ -190,6 +196,7 @@ fun CommandCard(
     item: CommandItem,
     onPinShortcut: () -> Unit,
     onRun: () -> Unit,
+    onDuplicate: () -> Unit,
     onEdit: () -> Unit,
     onDelete: () -> Unit
 ) {
@@ -219,6 +226,14 @@ fun CommandCard(
                 )
 
                 Row {
+                    IconButton(onClick = onDuplicate, modifier = Modifier.size(32.dp)) {
+                        Icon(
+                            painter = painterResource(id = R.drawable.ic_copy),
+                            contentDescription = "Duplicate",
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.size(18.dp)
+                        )
+                    }
                     IconButton(onClick = onEdit, modifier = Modifier.size(32.dp)) {
                         Icon(
                             painter = painterResource(id = R.drawable.ic_edit),
