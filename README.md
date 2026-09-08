@@ -4,11 +4,13 @@
 
 ## Features
 
-- **Custom Shell Commands**: Define shell commands (e.g. `wm density`, `uptime`, `df -h`, `date`).
+- **Custom Shell Commands**: Define shell commands (e.g. `wm density`, `df -h`, `date`).
 - **Quick Presets**: Preloaded with `510 dp`, `550 dp`, `Reset Density`, and storage info.
 - **Instant Display Density Switching**: Seamlessly changes smallest width / display density via Android WindowManager and `WRITE_SECURE_SETTINGS`.
+- **Duplicate Command**: 1-tap duplication button to clone any command, preserving all options and parameters.
 - **Home Screen Shortcuts**: Pin 1-tap launcher shortcuts using `ShortcutManagerCompat`.
-- **Auto-Exit on Success**: When tapping a home screen shortcut / widget, the command runs and automatically exits without requiring a tap on the Close button. If an error occurs, it remains open with full error diagnostics.
+- **Auto-Exit on Success**: When tapping a home screen shortcut / widget, the command runs and automatically exits without requiring a tap on the Close button. If an error occurs, it remains open with full diagnostics.
+- **Configurable Auto-Close Delay**: Configure custom delay in ms (defaults to `0 ms` for instant exit; supports any value and quick preset chips: 300ms, 500ms, 1s, 2s).
 - **Execution Modes**:
   - **Output Window**: Shows a floating terminal card with live execution status, `stdout`, `stderr`, exit code, duration, and clipboard copy.
   - **Silent / Toast**: Runs the command in the background, displays a brief result Toast, and finishes immediately.
