@@ -9,6 +9,7 @@ data class CommandItem(
     val command: String,
     val runAsRoot: Boolean = false,
     val showOutput: Boolean = true,
+    val autoCloseDelayMs: Int = 0,
     val createdAt: Long = System.currentTimeMillis()
 ) {
     fun toJson(): JSONObject {
@@ -18,6 +19,7 @@ data class CommandItem(
             put("command", command)
             put("runAsRoot", runAsRoot)
             put("showOutput", showOutput)
+            put("autoCloseDelayMs", autoCloseDelayMs)
             put("createdAt", createdAt)
         }
     }
@@ -30,6 +32,7 @@ data class CommandItem(
                 command = json.optString("command", ""),
                 runAsRoot = json.optBoolean("runAsRoot", false),
                 showOutput = json.optBoolean("showOutput", true),
+                autoCloseDelayMs = json.optInt("autoCloseDelayMs", 0),
                 createdAt = json.optLong("createdAt", System.currentTimeMillis())
             )
         }

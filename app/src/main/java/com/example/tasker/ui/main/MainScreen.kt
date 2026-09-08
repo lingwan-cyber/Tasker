@@ -262,7 +262,9 @@ fun CommandCard(
                     color = MaterialTheme.colorScheme.secondaryContainer
                 ) {
                     Text(
-                        text = if (item.showOutput) "Output Window" else "Silent / Toast",
+                        text = if (item.showOutput) {
+                            if (item.autoCloseDelayMs == 0) "Instant Auto-Close" else "Close: ${item.autoCloseDelayMs}ms"
+                        } else "Silent / Toast",
                         color = MaterialTheme.colorScheme.onSecondaryContainer,
                         fontSize = 10.sp,
                         fontWeight = FontWeight.Medium,
@@ -382,6 +384,7 @@ fun CommandEditDialog(
     var commandText by remember { mutableStateOf(initial?.command ?: "") }
     var runAsRoot by remember { mutableStateOf(initial?.runAsRoot ?: false) }
     var showOutput by remember { mutableStateOf(initial?.showOutput ?: true) }
+    var autoCloseDelayMs by remember { mutableStateOf(initial?.autoCloseDelayMs ?: 0) }
 
     val presets = listOf(
         "510 dp" to "wm density $(( $(wm size | grep -o '[0-9]*x[0-9]*' | tail -1 | cut -dx -f1) * 160 / 510 ))",
@@ -469,6 +472,40 @@ fun CommandEditDialog(
                     )
                 }
 
+                if (showOutput) {
+                    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                        Text(
+                            "Auto-Close Delay (on success)",
+                            fontWeight = FontWeight.Medium,
+                            fontSize = 14.sp
+                        )
+                        Text(
+                            if (autoCloseDelayMs == 0) "Closes instantly once command succeeds" else "Waits ${autoCloseDelayMs}ms before closing on success",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.outline
+                        )
+                        val delayOptions = listOf(
+                            0 to "0 ms (Instant)",
+                            300 to "300 ms",
+                            500 to "500 ms",
+                            1000 to "1 s",
+                            2000 to "2 s"
+                        )
+                        LazyRow(
+                            horizontalArrangement = Arrangement.spacedBy(6.dp),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            items(delayOptions) { (ms, label) ->
+                                FilterChip(
+                                    selected = autoCloseDelayMs == ms,
+                                    onClick = { autoCloseDelayMs = ms },
+                                    label = { Text(label, fontSize = 12.sp) }
+                                )
+                            }
+                        }
+                    }
+                }
+
                 // Run As Root Toggle
                 Row(
                     modifier = Modifier.fillMaxWidth(),
@@ -497,7 +534,8 @@ fun CommandEditDialog(
                         name = name.trim().ifBlank { "Shell Command" },
                         command = commandText.trim(),
                         runAsRoot = runAsRoot,
-                        showOutput = showOutput
+                        showOutput = showOutput,
+                        autoCloseDelayMs = autoCloseDelayMs
                     )
                     onSave(finalItem)
                 },

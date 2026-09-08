@@ -51,6 +51,7 @@ class ExecuteCommandActivity : ComponentActivity() {
         var commandText = intent.getStringExtra(EXTRA_COMMAND_TEXT) ?: ""
         var runAsRoot = intent.getBooleanExtra(EXTRA_RUN_AS_ROOT, false)
         var showOutput = intent.getBooleanExtra(EXTRA_SHOW_OUTPUT, true)
+        var autoCloseDelayMs = intent.getIntExtra(EXTRA_AUTO_CLOSE_DELAY_MS, 0)
 
         // Fallback to repository if extra was missing
         if (commandText.isBlank() && commandId.isNotBlank()) {
@@ -60,6 +61,7 @@ class ExecuteCommandActivity : ComponentActivity() {
                 commandText = item.command
                 runAsRoot = item.runAsRoot
                 showOutput = item.showOutput
+                autoCloseDelayMs = item.autoCloseDelayMs
             }
         }
 
@@ -109,6 +111,7 @@ class ExecuteCommandActivity : ComponentActivity() {
                         name = commandName,
                         command = commandText,
                         runAsRoot = runAsRoot,
+                        autoCloseDelayMs = autoCloseDelayMs,
                         onClose = { finish() },
                         onCopyOutput = { text ->
                             val clipboard = getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
@@ -127,6 +130,7 @@ class ExecuteCommandActivity : ComponentActivity() {
         const val EXTRA_COMMAND_TEXT = "extra_command_text"
         const val EXTRA_RUN_AS_ROOT = "extra_run_as_root"
         const val EXTRA_SHOW_OUTPUT = "extra_show_output"
+        const val EXTRA_AUTO_CLOSE_DELAY_MS = "extra_auto_close_delay_ms"
     }
 }
 
@@ -136,6 +140,7 @@ fun CommandExecutionScreen(
     name: String,
     command: String,
     runAsRoot: Boolean,
+    autoCloseDelayMs: Int = 0,
     onClose: () -> Unit,
     onCopyOutput: (String) -> Unit
 ) {
@@ -153,7 +158,10 @@ fun CommandExecutionScreen(
             result = res
             isRunning = false
             if (res.exitCode == 0) {
-                // Succeeded with no runtime error: exit immediately without delay
+                // Succeeded with no runtime error:
+                if (autoCloseDelayMs > 0) {
+                    kotlinx.coroutines.delay(autoCloseDelayMs.toLong())
+                }
                 onClose()
             }
         }

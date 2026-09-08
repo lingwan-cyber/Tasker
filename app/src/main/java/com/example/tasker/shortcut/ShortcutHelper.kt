@@ -29,6 +29,7 @@ object ShortcutHelper {
             putExtra(ExecuteCommandActivity.EXTRA_COMMAND_TEXT, command.command)
             putExtra(ExecuteCommandActivity.EXTRA_RUN_AS_ROOT, command.runAsRoot)
             putExtra(ExecuteCommandActivity.EXTRA_SHOW_OUTPUT, command.showOutput)
+            putExtra(ExecuteCommandActivity.EXTRA_AUTO_CLOSE_DELAY_MS, command.autoCloseDelayMs)
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
         }
 

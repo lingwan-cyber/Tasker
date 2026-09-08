@@ -15,6 +15,7 @@ class CommandItemTest {
             command = "ping -c 3 8.8.8.8",
             runAsRoot = true,
             showOutput = false,
+            autoCloseDelayMs = 500,
             createdAt = 123456789L
         )
 
@@ -26,6 +27,7 @@ class CommandItemTest {
         assertEquals("ping -c 3 8.8.8.8", restored.command)
         assertTrue(restored.runAsRoot)
         assertFalse(restored.showOutput)
+        assertEquals(500, restored.autoCloseDelayMs)
         assertEquals(123456789L, restored.createdAt)
     }
 
@@ -38,5 +40,6 @@ class CommandItemTest {
         assertEquals("", item.command)
         assertFalse(item.runAsRoot)
         assertTrue(item.showOutput)
+        assertEquals(0, item.autoCloseDelayMs)
     }
 }
