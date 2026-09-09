@@ -404,7 +404,7 @@ fun CommandEditDialog(
     var delayText by remember { mutableStateOf((initial?.autoCloseDelayMs ?: 0).toString()) }
 
     val presets = listOf(
-        "510 dp" to "wm density $(( $(wm size | grep -o '[0-9]*x[0-9]*' | tail -1 | cut -dx -f1) * 160 / 510 )) && settings put system font_scale 1.0",
+        "510 dp" to "wm density reset && settings put system font_scale 1.0",
         "550 dp" to "wm density $(( $(wm size | grep -o '[0-9]*x[0-9]*' | tail -1 | cut -dx -f1) * 160 / 550 )) && settings put system font_scale 0.85",
         "Reset Density" to "wm density reset",
         "Font Default" to "settings put system font_scale 1.0",
