@@ -38,10 +38,10 @@ class CommandRepository(context: Context) {
                     if (item.name.contains("Ping", ignoreCase = true) || item.name.contains("Uptime", ignoreCase = true)) {
                         continue
                     }
-                    // Update commands to include font scale settings
-                    if (item.name.contains("510")) {
+                    // Update commands to 434 dp (native default) and 550 dp
+                    if (item.name.contains("510") || item.name.contains("434")) {
                         item = item.copy(
-                            name = "510 dp",
+                            name = "434 dp",
                             command = "wm density reset && settings put system font_scale 1.0"
                         )
                     } else if (item.name.contains("550")) {
@@ -65,11 +65,11 @@ class CommandRepository(context: Context) {
                     ))
                 }
 
-                // Ensure 510 dp command is available
-                val has510 = list.any { it.name == "510 dp" || it.command.contains("510") }
-                if (!has510) {
+                // Ensure 434 dp command is available
+                val has434 = list.any { it.name == "434 dp" }
+                if (!has434) {
                     list.add(0, CommandItem(
-                        name = "510 dp",
+                        name = "434 dp",
                         command = "wm density reset && settings put system font_scale 1.0",
                         runAsRoot = false,
                         showOutput = true
@@ -87,7 +87,7 @@ class CommandRepository(context: Context) {
     private fun getDefaultCommands(): List<CommandItem> {
         return listOf(
             CommandItem(
-                name = "510 dp",
+                name = "434 dp",
                 command = "wm density reset && settings put system font_scale 1.0",
                 runAsRoot = false,
                 showOutput = true

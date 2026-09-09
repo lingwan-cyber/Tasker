@@ -5,7 +5,7 @@
 ## Features
 
 - **Custom Shell Commands**: Define shell commands (e.g. `wm density`, `df -h`, `date`).
-- **Quick Presets**: Preloaded with `510 dp`, `550 dp`, `Reset Density`, and storage info.
+- **Quick Presets**: Preloaded with `434 dp` (Default native), `550 dp`, `Reset Density`, and storage info.
 - **Instant Display Density Switching**: Seamlessly changes smallest width / display density via Android WindowManager and `WRITE_SECURE_SETTINGS`.
 - **Duplicate Command**: 1-tap duplication button to clone any command, preserving all options and parameters.
 - **Home Screen Shortcuts**: Pin 1-tap launcher shortcuts using `ShortcutManagerCompat`.
