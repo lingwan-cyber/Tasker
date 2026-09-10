@@ -94,6 +94,19 @@ class CommandRepository(context: Context) {
                     ))
                 }
 
+                // Ensure 434 dp (Font 1.15) command is available
+                val has434Large = list.any { it.name == "434 dp (Font 1.15)" }
+                if (!has434Large) {
+                    val idx434 = list.indexOfFirst { it.name == "434 dp" }
+                    val insertPos = if (idx434 >= 0) idx434 + 1 else 1
+                    list.add(insertPos, CommandItem(
+                        name = "434 dp (Font 1.15)",
+                        command = "wm density reset && settings put system font_scale 1.15",
+                        runAsRoot = false,
+                        showOutput = true
+                    ))
+                }
+
                 saveCommandsInternal(list)
                 _commands.value = list
             } catch (e: Exception) {
@@ -107,6 +120,12 @@ class CommandRepository(context: Context) {
             CommandItem(
                 name = "434 dp",
                 command = "wm density reset && settings put system font_scale 1.0",
+                runAsRoot = false,
+                showOutput = true
+            ),
+            CommandItem(
+                name = "434 dp (Font 1.15)",
+                command = "wm density reset && settings put system font_scale 1.15",
                 runAsRoot = false,
                 showOutput = true
             ),
