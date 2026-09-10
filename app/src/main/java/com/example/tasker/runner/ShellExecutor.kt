@@ -207,38 +207,110 @@ object ShellExecutor {
             android.util.Log.w("TaskerExec", "Failed to update Settings.System.FONT_SCALE directly", e)
         }
 
-        // 2. Invoke ActivityTaskManager via reflection to apply configuration immediately
+        // 2. Create updated configuration
+        val config = android.content.res.Configuration(context.resources.configuration).apply {
+            fontScale = scale
+        }
+
+        var applied = false
+
+        // 3. Invoke ActivityTaskManager.getService().updatePersistentConfiguration(config)
         try {
             val atmClass = Class.forName("android.app.ActivityTaskManager")
             val getServiceMethod = atmClass.getMethod("getService")
             val atm = getServiceMethod.invoke(null)
             if (atm != null) {
-                val getConfigurationMethod = atm.javaClass.getMethod("getConfiguration")
-                val config = getConfigurationMethod.invoke(atm) as? android.content.res.Configuration
-                if (config != null) {
-                    config.fontScale = scale
-                    val updateConfigMethod = atm.javaClass.getMethod("updatePersistentConfiguration", android.content.res.Configuration::class.java)
-                    updateConfigMethod.invoke(atm, config)
-                    android.util.Log.i("TaskerExec", "Updated persistent configuration with fontScale=$scale via ActivityTaskManager")
+                val updateMethod = atm.javaClass.methods.firstOrNull {
+                    it.name.startsWith("updatePersistentConfiguration") &&
+                    it.parameterTypes.isNotEmpty() &&
+                    it.parameterTypes[0].isAssignableFrom(android.content.res.Configuration::class.java)
+                }
+                if (updateMethod != null) {
+                    if (updateMethod.parameterCount == 1) {
+                        updateMethod.invoke(atm, config)
+                        applied = true
+                        android.util.Log.i("TaskerExec", "Updated persistent config via ActivityTaskManager.${updateMethod.name}(config)")
+                    } else if (updateMethod.parameterCount == 2 && updateMethod.parameterTypes[1] == String::class.java) {
+                        updateMethod.invoke(atm, config, context.packageName)
+                        applied = true
+                        android.util.Log.i("TaskerExec", "Updated persistent config via ActivityTaskManager.${updateMethod.name}(config, pkg)")
+                    }
                 }
             }
         } catch (e: Exception) {
+            android.util.Log.w("TaskerExec", "ActivityTaskManager updatePersistentConfiguration failed", e)
+        }
+
+        // 4. Fallback to ActivityManager.getService().updatePersistentConfiguration(config)
+        if (!applied) {
             try {
-                val amClass = Class.forName("android.app.ActivityManagerNative")
-                val getDefaultMethod = amClass.getMethod("getDefault")
-                val am = getDefaultMethod.invoke(null)
+                val amClass = Class.forName("android.app.ActivityManager")
+                val getServiceMethod = amClass.getMethod("getService")
+                val am = getServiceMethod.invoke(null)
                 if (am != null) {
-                    val getConfigurationMethod = am.javaClass.getMethod("getConfiguration")
-                    val config = getConfigurationMethod.invoke(am) as? android.content.res.Configuration
-                    if (config != null) {
-                        config.fontScale = scale
-                        val updateConfigMethod = am.javaClass.getMethod("updatePersistentConfiguration", android.content.res.Configuration::class.java)
-                        updateConfigMethod.invoke(am, config)
-                        android.util.Log.i("TaskerExec", "Updated persistent configuration with fontScale=$scale via ActivityManager")
+                    val updateMethod = am.javaClass.methods.firstOrNull {
+                        it.name.startsWith("updatePersistentConfiguration") &&
+                        it.parameterTypes.isNotEmpty() &&
+                        it.parameterTypes[0].isAssignableFrom(android.content.res.Configuration::class.java)
+                    }
+                    if (updateMethod != null) {
+                        if (updateMethod.parameterCount == 1) {
+                            updateMethod.invoke(am, config)
+                            applied = true
+                            android.util.Log.i("TaskerExec", "Updated persistent config via ActivityManager.${updateMethod.name}(config)")
+                        } else if (updateMethod.parameterCount == 2 && updateMethod.parameterTypes[1] == String::class.java) {
+                            updateMethod.invoke(am, config, context.packageName)
+                            applied = true
+                            android.util.Log.i("TaskerExec", "Updated persistent config via ActivityManager.${updateMethod.name}(config, pkg)")
+                        }
                     }
                 }
-            } catch (e2: Exception) {
-                android.util.Log.w("TaskerExec", "ActivityManager configuration reflection failed", e2)
+            } catch (e: Exception) {
+                android.util.Log.w("TaskerExec", "ActivityManager updatePersistentConfiguration failed", e)
+            }
+        }
+
+        // 5. Fallback to updateConfiguration
+        if (!applied) {
+            try {
+                val atmClass = Class.forName("android.app.ActivityTaskManager")
+                val getServiceMethod = atmClass.getMethod("getService")
+                val atm = getServiceMethod.invoke(null)
+                if (atm != null) {
+                    val updateMethod = atm.javaClass.methods.firstOrNull {
+                        it.name.startsWith("updateConfiguration") &&
+                        it.parameterTypes.isNotEmpty() &&
+                        it.parameterTypes[0].isAssignableFrom(android.content.res.Configuration::class.java)
+                    }
+                    if (updateMethod != null) {
+                        updateMethod.invoke(atm, config)
+                        applied = true
+                        android.util.Log.i("TaskerExec", "Updated config via ActivityTaskManager.${updateMethod.name}(config)")
+                    }
+                }
+            } catch (e: Exception) {
+                android.util.Log.w("TaskerExec", "ActivityTaskManager updateConfiguration failed", e)
+            }
+        }
+
+        // 6. Fallback to ActivityManagerNative
+        if (!applied) {
+            try {
+                val amnClass = Class.forName("android.app.ActivityManagerNative")
+                val getDefaultMethod = amnClass.getMethod("getDefault")
+                val am = getDefaultMethod.invoke(null)
+                if (am != null) {
+                    val updateMethod = am.javaClass.methods.firstOrNull {
+                        it.name.startsWith("updatePersistentConfiguration") || it.name.startsWith("updateConfiguration")
+                    }
+                    if (updateMethod != null) {
+                        updateMethod.invoke(am, config)
+                        applied = true
+                        android.util.Log.i("TaskerExec", "Updated config via ActivityManagerNative")
+                    }
+                }
+            } catch (e: Exception) {
+                android.util.Log.w("TaskerExec", "ActivityManagerNative fallback failed", e)
             }
         }
     }
