@@ -176,12 +176,28 @@ object ShellExecutor {
                 handledAny = true
             }
 
+            // 4. Check for native volume commands (e.g. "volume notification 50%", "cmd media_session volume --stream 5 --set 3")
+            val volumeSpecs = VolumeController.parseAll(command)
+            val volumeOut = mutableListOf<String>()
+            val volumeErr = mutableListOf<String>()
+            if (volumeSpecs.isNotEmpty()) {
+                for (spec in volumeSpecs) {
+                    val (ok, msg) = VolumeController.executeSpec(context, spec)
+                    if (ok) {
+                        volumeOut.add(msg)
+                    } else {
+                        volumeErr.add(msg)
+                    }
+                }
+                handledAny = true
+            }
+
             if (handledAny) {
-                val messages = listOfNotNull(appliedDensityMsg, appliedFontScaleMsg, appliedSecureMsg)
+                val messages = listOfNotNull(appliedDensityMsg, appliedFontScaleMsg, appliedSecureMsg) + volumeOut
                 return ExecutionResult(
-                    exitCode = 0,
+                    exitCode = if (volumeErr.isEmpty()) 0 else 1,
                     stdout = messages.joinToString("\n"),
-                    stderr = "",
+                    stderr = volumeErr.joinToString("\n"),
                     durationMs = System.currentTimeMillis() - startTime
                 )
             }

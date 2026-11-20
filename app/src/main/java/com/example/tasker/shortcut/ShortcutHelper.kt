@@ -8,6 +8,7 @@ import androidx.core.content.pm.ShortcutManagerCompat
 import androidx.core.graphics.drawable.IconCompat
 import com.example.tasker.R
 import com.example.tasker.data.CommandItem
+import com.example.tasker.runner.VolumeController
 import com.example.tasker.ui.ExecuteCommandActivity
 
 object ShortcutHelper {
@@ -33,10 +34,16 @@ object ShortcutHelper {
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
         }
 
+        val iconRes = if (VolumeController.isVolumeCommand(command.command)) {
+            R.drawable.ic_volume_shortcut
+        } else {
+            R.drawable.ic_terminal_shortcut
+        }
+
         val shortcutInfo = ShortcutInfoCompat.Builder(context, "tasker_cmd_${command.id}")
             .setShortLabel(command.name.take(15))
             .setLongLabel(command.name)
-            .setIcon(IconCompat.createWithResource(context, R.drawable.ic_terminal_shortcut))
+            .setIcon(IconCompat.createWithResource(context, iconRes))
             .setIntent(launchIntent)
             .build()
 

@@ -30,9 +30,11 @@ import androidx.compose.ui.window.Dialog
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.tasker.R
+import com.example.tasker.data.AutomationRule
 import com.example.tasker.data.CommandItem
 import com.example.tasker.runner.ExecutionResult
 import com.example.tasker.runner.ShellExecutor
+import com.example.tasker.runner.VolumeController
 import com.example.tasker.shortcut.ShortcutHelper
 import kotlinx.coroutines.launch
 
@@ -44,44 +46,78 @@ fun MainScreen(
 ) {
     val context = LocalContext.current
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val automationRules by viewModel.automationRules.collectAsStateWithLifecycle()
+    val monitoringEnabled by viewModel.monitoringEnabled.collectAsStateWithLifecycle()
+    val observedWifiSsid by viewModel.observedWifiSsid.collectAsStateWithLifecycle()
+    val observedLocationText by viewModel.observedLocationText.collectAsStateWithLifecycle()
+
+    var selectedTab by remember { mutableIntStateOf(0) }
 
     var commandToEdit by remember { mutableStateOf<CommandItem?>(null) }
     var isCreatingNew by remember { mutableStateOf(false) }
     var commandToDelete by remember { mutableStateOf<CommandItem?>(null) }
     var commandToTest by remember { mutableStateOf<CommandItem?>(null) }
 
+    var ruleToEdit by remember { mutableStateOf<AutomationRule?>(null) }
+    var isCreatingRule by remember { mutableStateOf(false) }
+    var ruleToDelete by remember { mutableStateOf<AutomationRule?>(null) }
+
     Scaffold(
         topBar = {
-            TopAppBar(
-                title = {
-                    Column {
-                        Text(
-                            text = "Tasker",
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 20.sp
-                        )
-                        Text(
-                            text = "Shell Command Shortcuts",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.outline
-                        )
-                    }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.surface
+            Column {
+                TopAppBar(
+                    title = {
+                        Column {
+                            Text(
+                                text = "Tasker",
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 20.sp
+                            )
+                            Text(
+                                text = if (selectedTab == 0) "Commands & Shortcuts" else "Wi-Fi & Location Auto Rules",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.outline
+                            )
+                        }
+                    },
+                    colors = TopAppBarDefaults.topAppBarColors(
+                        containerColor = MaterialTheme.colorScheme.surface
+                    )
                 )
-            )
+                PrimaryTabRow(selectedTabIndex = selectedTab) {
+                    Tab(
+                        selected = selectedTab == 0,
+                        onClick = { selectedTab = 0 },
+                        text = { Text("Commands", fontWeight = FontWeight.SemiBold) }
+                    )
+                    Tab(
+                        selected = selectedTab == 1,
+                        onClick = { selectedTab = 1 },
+                        text = {
+                            val activeCount = automationRules.count { it.enabled }
+                            val suffix = if (monitoringEnabled && activeCount > 0) " ($activeCount)" else ""
+                            Text("Auto Rules$suffix", fontWeight = FontWeight.SemiBold)
+                        }
+                    )
+                }
+            }
         },
         floatingActionButton = {
             ExtendedFloatingActionButton(
-                onClick = { isCreatingNew = true },
+                onClick = {
+                    if (selectedTab == 0) {
+                        isCreatingNew = true
+                    } else {
+                        isCreatingRule = true
+                    }
+                },
                 icon = {
                     Icon(
                         painter = painterResource(id = R.drawable.ic_add),
-                        contentDescription = "Add Command"
+                        contentDescription = if (selectedTab == 0) "Add Command" else "Add Auto Rule"
                     )
                 },
-                text = { Text("New Command") }
+                text = { Text(if (selectedTab == 0) "New Command" else "New Rule") }
             )
         }
     ) { paddingValues ->
@@ -90,56 +126,83 @@ fun MainScreen(
                 .fillMaxSize()
                 .padding(paddingValues)
         ) {
-            when (val state = uiState) {
-                is MainScreenUiState.Loading -> {
-                    CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
-                }
-                is MainScreenUiState.Success -> {
-                    if (state.commands.isEmpty()) {
-                        EmptyStateView(
-                            onAddClick = { isCreatingNew = true },
-                            modifier = Modifier.align(Alignment.Center)
-                        )
-                    } else {
-                        LazyColumn(
-                            modifier = Modifier.fillMaxSize(),
-                            contentPadding = PaddingValues(16.dp),
-                            verticalArrangement = Arrangement.spacedBy(12.dp)
-                        ) {
-                            items(state.commands, key = { it.id }) { item ->
-                                CommandCard(
-                                    item = item,
-                                    onPinShortcut = {
-                                        ShortcutHelper.createHomeScreenShortcut(context, item)
-                                    },
-                                    onRun = {
-                                        commandToTest = item
-                                    },
-                                    onDuplicate = {
-                                        val copy = viewModel.duplicateCommand(item.id)
-                                        if (copy != null) {
-                                            Toast.makeText(context, "Duplicated \"${item.name}\"", Toast.LENGTH_SHORT).show()
+            if (selectedTab == 0) {
+                when (val state = uiState) {
+                    is MainScreenUiState.Loading -> {
+                        CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
+                    }
+                    is MainScreenUiState.Success -> {
+                        if (state.commands.isEmpty()) {
+                            EmptyStateView(
+                                onAddClick = { isCreatingNew = true },
+                                modifier = Modifier.align(Alignment.Center)
+                            )
+                        } else {
+                            LazyColumn(
+                                modifier = Modifier.fillMaxSize(),
+                                contentPadding = PaddingValues(16.dp),
+                                verticalArrangement = Arrangement.spacedBy(12.dp)
+                            ) {
+                                items(state.commands, key = { it.id }) { item ->
+                                    CommandCard(
+                                        item = item,
+                                        onPinShortcut = {
+                                            ShortcutHelper.createHomeScreenShortcut(context, item)
+                                        },
+                                        onRun = {
+                                            commandToTest = item
+                                        },
+                                        onDuplicate = {
+                                            val copy = viewModel.duplicateCommand(item.id)
+                                            if (copy != null) {
+                                                Toast.makeText(context, "Duplicated \"${item.name}\"", Toast.LENGTH_SHORT).show()
+                                            }
+                                        },
+                                        onEdit = {
+                                            commandToEdit = item
+                                        },
+                                        onDelete = {
+                                            commandToDelete = item
                                         }
-                                    },
-                                    onEdit = {
-                                        commandToEdit = item
-                                    },
-                                    onDelete = {
-                                        commandToDelete = item
-                                    }
-                                )
-                            }
-                            item {
-                                Spacer(modifier = Modifier.height(72.dp))
+                                    )
+                                }
+                                item {
+                                    Spacer(modifier = Modifier.height(72.dp))
+                                }
                             }
                         }
                     }
                 }
+            } else {
+                AutomationTabContent(
+                    rules = automationRules,
+                    monitoringEnabled = monitoringEnabled,
+                    observedWifiSsid = observedWifiSsid,
+                    observedLocationText = observedLocationText,
+                    onToggleMonitoring = { enabled ->
+                        viewModel.setMonitoringEnabled(enabled)
+                    },
+                    onEvaluateNow = {
+                        viewModel.evaluateRulesNow()
+                    },
+                    onToggleRule = { id, enabled ->
+                        viewModel.setRuleEnabled(id, enabled)
+                    },
+                    onEditRule = { rule ->
+                        ruleToEdit = rule
+                    },
+                    onDeleteRule = { rule ->
+                        ruleToDelete = rule
+                    },
+                    onCreateRule = {
+                        isCreatingRule = true
+                    }
+                )
             }
         }
     }
 
-    // Add / Edit Dialog
+    // Add / Edit Command Dialog
     if (isCreatingNew || commandToEdit != null) {
         CommandEditDialog(
             initial = commandToEdit,
@@ -156,7 +219,7 @@ fun MainScreen(
         )
     }
 
-    // Delete Confirmation Dialog
+    // Delete Command Confirmation Dialog
     commandToDelete?.let { item ->
         AlertDialog(
             onDismissRequest = { commandToDelete = null },
@@ -187,6 +250,49 @@ fun MainScreen(
         TestExecutionDialog(
             command = item,
             onDismiss = { commandToTest = null }
+        )
+    }
+
+    // Add / Edit Automation Rule Dialog
+    if (isCreatingRule || ruleToEdit != null) {
+        AutomationRuleEditDialog(
+            initial = ruleToEdit,
+            onDismiss = {
+                isCreatingRule = false
+                ruleToEdit = null
+            },
+            onSave = { savedRule ->
+                viewModel.saveRule(savedRule)
+                isCreatingRule = false
+                ruleToEdit = null
+                Toast.makeText(context, "Saved rule \"${savedRule.name}\"", Toast.LENGTH_SHORT).show()
+            }
+        )
+    }
+
+    // Delete Automation Rule Confirmation Dialog
+    ruleToDelete?.let { rule ->
+        AlertDialog(
+            onDismissRequest = { ruleToDelete = null },
+            title = { Text("Delete Auto Rule") },
+            text = { Text("Are you sure you want to delete \"${rule.name}\"?") },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        viewModel.deleteRule(rule.id)
+                        ruleToDelete = null
+                        Toast.makeText(context, "Deleted rule", Toast.LENGTH_SHORT).show()
+                    },
+                    colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)
+                ) {
+                    Text("Delete")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { ruleToDelete = null }) {
+                    Text("Cancel")
+                }
+            }
         )
     }
 }
@@ -260,6 +366,20 @@ fun CommandCard(
                 horizontalArrangement = Arrangement.spacedBy(6.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
+                if (VolumeController.isVolumeCommand(item.command)) {
+                    Surface(
+                        shape = RoundedCornerShape(4.dp),
+                        color = MaterialTheme.colorScheme.tertiaryContainer
+                    ) {
+                        Text(
+                            text = "VOLUME",
+                            color = MaterialTheme.colorScheme.onTertiaryContainer,
+                            fontSize = 10.sp,
+                            fontWeight = FontWeight.Bold,
+                            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                        )
+                    }
+                }
                 if (item.runAsRoot) {
                     Surface(
                         shape = RoundedCornerShape(4.dp),
@@ -404,6 +524,12 @@ fun CommandEditDialog(
     var delayText by remember { mutableStateOf((initial?.autoCloseDelayMs ?: 0).toString()) }
 
     val presets = listOf(
+        "Notif Mute (0%)" to "volume notification 0%",
+        "Notif Low (30%)" to "volume notification 30%",
+        "Notif Med (50%)" to "volume notification 50%",
+        "Notif High (80%)" to "volume notification 80%",
+        "Notif Max (100%)" to "volume notification 100%",
+        "Notif Status" to "volume notification get",
         "434 dp" to "wm density reset && settings put system font_scale 1.0",
         "434 dp (Font 1.15)" to "wm density reset && settings put system font_scale 1.15",
         "511 dp" to "wm density 382 && settings put system font_scale 0.85",

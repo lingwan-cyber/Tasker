@@ -8,12 +8,14 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.ui.Modifier
+import com.example.tasker.automation.AutomationHelper
 import com.example.tasker.theme.TaskerTheme
 import com.example.tasker.ui.main.MainScreen
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        AutomationHelper.syncMonitoring(this)
         enableEdgeToEdge()
         setContent {
             TaskerTheme {

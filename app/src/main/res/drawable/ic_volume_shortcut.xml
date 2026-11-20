@@ -1,0 +1,20 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="48dp"
+    android:height="48dp"
+    android:viewportWidth="48"
+    android:viewportHeight="48">
+    <path
+        android:fillColor="#0F172A"
+        android:pathData="M8,4h32c2.2,0 4,1.8 4,4v32c0,2.2 -1.8,4 -4,4H8c-2.2,0 -4,-1.8 -4,-4V8c0,-2.2 1.8,-4 4,-4z" />
+    <!-- Speaker cone -->
+    <path
+        android:fillColor="#38BDF8"
+        android:pathData="M11,19v10h6l8,7V12l-8,7h-6z" />
+    <!-- Sound waves -->
+    <path
+        android:fillColor="#10B981"
+        android:pathData="M30,18.5c1.9,1.2 3.2,3.2 3.2,5.5s-1.3,4.3 -3.2,5.5v-11z" />
+    <path
+        android:fillColor="#38BDF8"
+        android:pathData="M30,12.5v2.8c3.6,1.2 6.2,4.6 6.2,8.7s-2.6,7.5 -6.2,8.7v2.8c5.1,-1.3 8.8,-5.9 8.8,-11.5S35.1,13.8 30,12.5z" />
+</vector>

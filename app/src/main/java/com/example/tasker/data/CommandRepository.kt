@@ -107,6 +107,17 @@ class CommandRepository(context: Context) {
                     ))
                 }
 
+                // Seed Notification Volume presets once for existing users
+                if (!prefs.getBoolean(KEY_VOLUME_PRESETS_SEEDED, false)) {
+                    val volumeDefaults = getDefaultVolumeCommands()
+                    for (preset in volumeDefaults) {
+                        if (list.none { it.command.equals(preset.command, ignoreCase = true) }) {
+                            list.add(preset)
+                        }
+                    }
+                    prefs.edit().putBoolean(KEY_VOLUME_PRESETS_SEEDED, true).apply()
+                }
+
                 saveCommandsInternal(list)
                 _commands.value = list
             } catch (e: Exception) {
@@ -115,7 +126,34 @@ class CommandRepository(context: Context) {
         }
     }
 
+    private fun getDefaultVolumeCommands(): List<CommandItem> {
+        return listOf(
+            CommandItem(
+                name = "Notif Vol: Mute (0%)",
+                command = "volume notification 0%",
+                runAsRoot = false,
+                showOutput = false,
+                autoCloseDelayMs = 0
+            ),
+            CommandItem(
+                name = "Notif Vol: Low (30%)",
+                command = "volume notification 30%",
+                runAsRoot = false,
+                showOutput = false,
+                autoCloseDelayMs = 0
+            ),
+            CommandItem(
+                name = "Notif Vol: High (80%)",
+                command = "volume notification 80%",
+                runAsRoot = false,
+                showOutput = false,
+                autoCloseDelayMs = 0
+            )
+        )
+    }
+
     private fun getDefaultCommands(): List<CommandItem> {
+        prefs.edit().putBoolean(KEY_VOLUME_PRESETS_SEEDED, true).apply()
         return listOf(
             CommandItem(
                 name = "434 dp",
@@ -153,7 +191,7 @@ class CommandRepository(context: Context) {
                 runAsRoot = false,
                 showOutput = true
             )
-        )
+        ) + getDefaultVolumeCommands()
     }
 
     fun getById(id: String): CommandItem? {
@@ -203,6 +241,7 @@ class CommandRepository(context: Context) {
     companion object {
         private const val PREFS_NAME = "tasker_commands_prefs"
         private const val KEY_COMMANDS = "commands_list"
+        private const val KEY_VOLUME_PRESETS_SEEDED = "volume_presets_seeded_v1"
 
         @Volatile
         private var instance: CommandRepository? = null
